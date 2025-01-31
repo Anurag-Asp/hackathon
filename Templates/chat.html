@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block title %}Chat with {{ pdf.original_filename }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h3>Chatting with: {{ pdf.original_filename }}</h3>
+    
+    <div id="chat-container" class="mt-4" style="height: 60vh; overflow-y: auto">
+        <!-- Chat messages will appear here -->
+    </div>
+
+    <form id="chat-form" class="mt-3">
+        <div class="input-group">
+            <input type="text" class="form-control" placeholder="Ask about your PDF..." id="user-query">
+            <button type="submit" class="btn btn-primary">Ask</button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.getElementById('chat-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const query = document.getElementById('user-query').value;
+    const chatContainer = document.getElementById('chat-container');
+    
+    // Add user query
+    chatContainer.innerHTML += `
+        <div class="alert alert-primary user-query">
+            <strong>You:</strong> ${query}
+        </div>
+    `;
+
+    try {
+        const response = await fetch(window.location.href, {
+            method: 'POST',
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            body: new URLSearchParams({query: query})
+        });
+        
+        const data = await response.json();
+        
+        // Process code blocks
+        const answer = data.answer.split('```');
+        const formattedAnswer = answer.map((part, index) => {
+            if (index % 2 === 1) { // Code blocks between ```
+                return `<pre class="code-block"><code>${part.trim()}</code></pre>`;
+            }
+            return part;
+        }).join('');
+
+        // Process sources (remove duplicates)
+        const uniqueSources = [...new Set(data.sources.map(s => s.source))];
+
+        chatContainer.innerHTML += `
+            <div class="alert alert-success ai-response">
+                <div class="answer-section">
+                    ${formattedAnswer.replace(/\n/g, '<br>')}
+                </div>
+                <hr>
+                <div class="sources-section">
+                    <strong>Sources:</strong>
+                    <ul class="source-list">
+                        ${uniqueSources.map(s => `<li>${s.split('/').pop()}</li>`).join('')}
+                    </ul>
+                </div>
+            </div>
+        `;
+        
+    } catch (error) {
+        chatContainer.innerHTML += `
+            <div class="alert alert-danger">
+                Error: Could not process request
+            </div>
+        `;
+    }
+    
+    // Scroll to bottom
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    document.getElementById('user-query').value = '';
+};
+</script>
+
+<style>
+.code-block {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    padding: 15px;
+    margin: 10px 0;
+    font-family: 'Courier New', monospace;
+}
+
+.ai-response {
+    position: relative;
+}
+
+.source-list {
+    font-size: 0.9em;
+    margin-bottom: 0;
+    color: #6c757d;
+}
+
+.user-query {
+    margin-bottom: 10px;
+}
+
+.answer-section {
+    margin-bottom: 15px;
+}
+</style>
+{% endblock %}
