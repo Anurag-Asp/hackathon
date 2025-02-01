@@ -155,18 +155,6 @@
                         <input type="email" id="email" name="email" required>
                     </div>
                 </div>
-                <!-- Keep existing username and password fields -->
-                <button type="submit">Create Account</button>
-            </form>
-        </div>
-            <h1>Sign Up</h1>
-            {% if form.errors %}
-                <div class="error-message">
-                    Invalid username or password. Please try again.
-                </div>
-            {% endif %}
-            <form method="POST" action="{% url 'signup' %}">
-                {% csrf_token %}
                 <div class="form-group">
                     <label for="username"><i class="fas fa-user"></i> Username</label>
                     <div class="input-icon">

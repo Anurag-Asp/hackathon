@@ -1,6 +1,6 @@
 # pdfprocessor/urls.py
 from django.urls import path
-from .views import home, chat_with_pdf, signup_view, login_view ,logout_view
+from .views import home, chat_with_pdf, signup_view, login_view ,logout_view, verify_email
 
 
 
@@ -8,7 +8,7 @@ urlpatterns = [
     path('', home, name='home'),
     path('signup/', signup_view, name='signup'),
     path('login/', login_view, name='login'),
-    path('verify-email/<uidb64>/<token>/', views.verify_email, name='verify-email'),
+    path('verify-email/<uidb64>/<token>/', verify_email, name='verify-email'),
     path('logout/', logout_view , name='logout'),
     path('chat/<int:pdf_id>/', chat_with_pdf, name='chat'),
 ]

@@ -117,7 +117,13 @@
     <!-- Login Page Template -->
     <div class="auth-container" id="login-container">
         <h1>Login</h1>
-        
+        {% if messages %}
+            <div class="error-message">
+                {% for message in messages %}
+                        {{ message }}
+                {% endfor %}
+            </div>
+        {% endif %} 
         {% if form.errors %}
             <div class="error-message">
                 Invalid username or password. Please try again.

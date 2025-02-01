@@ -7,7 +7,18 @@ from .utils import process_pdf
 import os
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.core.mail import send_mail
 from django.contrib import messages
+from django.contrib.auth import get_user_model
+from django.conf import settings
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth import login, authenticate
+from .forms import CustomUserCreationForm, CustomAuthenticationForm
+
+
 
 @login_required(login_url='login')
 def home(request):
@@ -34,7 +45,6 @@ def home(request):
 
     return render(request, 'index.html')
 
-from django.views.decorators.http import require_http_methods
 @require_http_methods(["GET", "POST"])
 @login_required(login_url='login')
 def chat_with_pdf(request, pdf_id):
@@ -66,39 +76,6 @@ def chat_with_pdf(request, pdf_id):
         'user_pdfs': user_pdfs
     })
 
-from django.contrib.auth import login, authenticate
-from .forms import CustomUserCreationForm, CustomAuthenticationForm
-
-def signup_view(request):
-    if request.method == 'POST':
-        form = CustomUserCreationForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            login(request, user)
-            return redirect('home')
-    else:
-        form = CustomUserCreationForm()
-    return render(request, 'signup.html', {'form': form})
-
-def login_view(request):
-    if request.method == 'POST':
-        form = CustomAuthenticationForm(request, data=request.POST)
-        if form.is_valid():
-            username = form.cleaned_data.get('username')
-            password = form.cleaned_data.get('password')
-            user = authenticate(username=username, password=password)
-            if user:
-                if user.email_verified:
-                    login(request, user)
-                    return redirect('home')
-                messages.error(request, 'Verify your email first.')
-                return redirect('login')
-            messages.error(request, 'Invalid credentials.')
-            return redirect('login')
-    else:
-        form = CustomAuthenticationForm()
-    return render(request, 'login.html', {'form': form})
-
 
 
 @login_required(login_url='login')
@@ -107,15 +84,23 @@ def logout_view(request):
     messages.success(request, "Logged out successfully!")
     return redirect("login")
 
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes, force_str
-from django.core.mail import send_mail
-from django.contrib import messages
-from django.contrib.auth import get_user_model
+
 
 User = get_user_model()
 token_generator = PasswordResetTokenGenerator()
+
+def send_email(subject, recipient_list, message):
+    try:
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=recipient_list,
+            fail_silently=False
+        )
+        print(f"Email sent to {recipient_list}")
+    except Exception as e:
+        print(f"Email sending failed: {str(e)}")
 
 def signup_view(request):
     if request.method == 'POST':
@@ -131,14 +116,14 @@ def signup_view(request):
             verification_url = request.build_absolute_uri(
                 f'/verify-email/{uid}/{token}/'
             )
-            send_mail(
-                'Verify Your Email',
-                f'Click to verify: {verification_url}',
-                'noreply@example.com',
-                [user.email],
-                fail_silently=False,
+            
+            send_email(
+                subject='Verify Your Email',
+                recipient_list=[user.email],
+                message=f'Verify your email by clicking this link:\n{verification_url}'
             )
-            messages.success(request, 'Check your email to verify your account.')
+            
+            messages.success(request, 'Verification email sent! Check your inbox.')
             return redirect('login')
     else:
         form = CustomUserCreationForm()
@@ -158,4 +143,23 @@ def verify_email(request, uidb64, token):
         return redirect('login')
     messages.error(request, 'Invalid verification link.')
     return redirect('signup')
+
+def login_view(request):
+    if request.method == 'POST':
+        form = CustomAuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
+            user = authenticate(username=username, password=password)
+            if user:
+                if user.email_verified:
+                    login(request, user)
+                    return redirect('home')
+                messages.error(request, 'Verify your email first.')
+                return redirect('login')
+            messages.error(request, 'Invalid credentials.')
+            return redirect('login')
+    else:
+        form = CustomAuthenticationForm()
+    return render(request, 'login.html', {'form': form})
 

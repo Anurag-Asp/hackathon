@@ -1,6 +1,5 @@
 # pdfprocessor/models.py
 from django.conf import settings
-from django.contrib.auth import get_user_model
 
 
 from django.contrib.auth.models import AbstractUser
@@ -11,7 +10,6 @@ import uuid
 from django.core.exceptions import ValidationError
 
 class CustomUser(AbstractUser):
-    email = models.EmailField(unique=True)
     email_verified = models.BooleanField(default=False)
 
 def validate_pdf(value):
